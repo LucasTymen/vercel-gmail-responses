@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Devis - Origin Traiteur</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 550px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .icon {
+            font-size: 64px;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: bounce 0.6s ease-out;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        h1 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .subtitle {
+            color: #6c757d;
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .label { font-weight: 600; color: #495057; }
+        .value { color: #212529; }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin: 15px 0;
+            width: 100%;
+            text-align: center;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #6c757d;
+            font-size: 13px;
+        }
+        .close-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .close-btn:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading-state">
+            <div class="icon">⏳</div>
+            <h1>Traitement en cours...</h1>
+            <p class="subtitle" id="timestamp"></p>
+            <div class="spinner"></div>
+        </div>
+        
+        <div id="success-state" class="hidden">
+            <div class="icon" id="success-icon">✅</div>
+            <h1 id="success-title">Action réussie !</h1>
+            <p class="subtitle" id="success-time"></p>
+            <div class="status-badge status-success">
+                ✅ Base de données mise à jour
+            </div>
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">📋 Devis ID</span>
+                    <span class="value" id="success-devis-id">#</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">�� Action</span>
+                    <span class="value" id="success-action"></span>
+                </div>
+            </div>
+            <div class="footer">
+                ✅ Votre action a été traitée avec succès.<br/>
+                📱 Une notification a été envoyée sur Slack.<br/><br/>
+                <button class="close-btn" onclick="window.close()">Fermer</button>
+            </div>
+        </div>
+        
+        <div id="error-state" class="hidden">
+            <div class="icon">❌</div>
+            <h1>Une erreur est survenue</h1>
+            <div class="status-badge status-error">❌ Échec</div>
+            <div class="info-box">
+                <p id="error-message" style="color: #721c24;"></p>
+            </div>
+            <div class="footer">
+                <button class="close-btn" onclick="window.close()">Fermer</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const N8N_URL = 'https://n8n-prod.traiteur-origin.com/webhook/gmail-actions-v3-3'\;
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        const devisId = urlParams.get('devis_id');
+        const startTime = Date.now();
+        
+        const actionLabels = {
+            'accept': 'Accepté',
+            'postpone': 'Reporté de 7 jours',
+            'refuse': 'Refusé'
+        };
+        
+        document.getElementById('timestamp').textContent = new Date().toLocaleString('fr-FR');
+        
+        async function callN8n() {
+            try {
+                const response = await fetch(`${N8N_URL}?action=${action}&devis_id=${devisId}`);
+                if (response.ok) {
+                    showSuccess();
+                } else {
+                    showError(`Erreur HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+        
+        function showSuccess() {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('success-state').classList.remove('hidden');
+            document.getElementById('success-devis-id').textContent = `#${devisId}`;
+            document.getElementById('success-action').textContent = actionLabels[action] || action;
+        }
+        
+        function showError(msg) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.remove('hidden');
+            document.getElementById('error-message').textContent = msg;
+        }
+        
+        if (action && devisId) {
+            setTimeout(callN8n, 500);
+        } else {
+            showError('Paramètres manquants');
+        }
+    </script>
+</body>
+</html>

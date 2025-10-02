@@ -1,0 +1,16 @@
+{
+  "name": "origin-traiteur-gmail-responses",
+  "version": "1.0.0",
+  "description": "Page de réponse élégante pour les actions Gmail des devis Origin Traiteur",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve public -l 3000",
+    "test": "echo 'Page statique - tests via navigateur'"
+  },
+  "keywords": ["n8n", "gmail", "webhook", "response", "origin-traiteur"],
+  "author": "Lucas Tymen <commercial@traiteur-origin.com>",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}
