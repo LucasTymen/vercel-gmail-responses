@@ -168,30 +168,37 @@
     </div>
     
     <script>
-        const N8N_URL = 'https://n8n-prod.traiteur-origin.com/webhook/gmail-actions-v3-3'\;
+        // 🔄 UTILISE L'API VERCEL POUR ÉVITER LES PROBLÈMES CORS
+        const API_URL = '/api/process-action';
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action');
         const devisId = urlParams.get('devis_id');
         const startTime = Date.now();
-        
+
         const actionLabels = {
             'accept': 'Accepté',
             'postpone': 'Reporté de 7 jours',
             'refuse': 'Refusé'
         };
-        
+
         document.getElementById('timestamp').textContent = new Date().toLocaleString('fr-FR');
-        
-        async function callN8n() {
+
+        async function callAPI() {
             try {
-                const response = await fetch(`${N8N_URL}?action=${action}&devis_id=${devisId}`);
-                if (response.ok) {
+                console.log(`🔄 Calling API: ${API_URL}?action=${action}&devis_id=${devisId}`);
+                const response = await fetch(`${API_URL}?action=${action}&devis_id=${devisId}`);
+                const data = await response.json();
+
+                console.log('📥 API Response:', data);
+
+                if (data.success) {
                     showSuccess();
                 } else {
-                    showError(`Erreur HTTP ${response.status}`);
+                    showError(data.message || `Erreur: ${data.error}`);
                 }
             } catch (error) {
-                showError(error.message);
+                console.error('💥 Fetch error:', error);
+                showError(`Erreur réseau: ${error.message}`);
             }
         }
         
@@ -209,9 +216,9 @@
         }
         
         if (action && devisId) {
-            setTimeout(callN8n, 500);
+            setTimeout(callAPI, 500);
         } else {
-            showError('Paramètres manquants');
+            showError('Paramètres manquants: action et devis_id requis');
         }
     </script>
 </body>
