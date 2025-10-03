@@ -4,7 +4,7 @@
 // Cette fonction contourne les problèmes CORS en faisant
 // le relais côté serveur entre le front Vercel et n8n
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Configuration CORS pour autoriser les appels depuis le front Vercel
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
