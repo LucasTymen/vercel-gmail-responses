@@ -9,50 +9,50 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
+
     // Gérer les requêtes OPTIONS (preflight)
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
-    
+
     // Vérifier la méthode
     if (req.method !== 'GET') {
-        return res.status(405).json({ 
+        return res.status(405).json({
             error: 'Method Not Allowed',
-            message: 'Seul GET est autorisé' 
+            message: 'Seul GET est autorisé'
         });
     }
-    
+
     try {
         // Récupérer les paramètres
         const { action, devis_id } = req.query;
-        
+
         // Validation
         if (!action || !devis_id) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Bad Request',
                 message: 'Paramètres manquants: action et devis_id requis',
                 received: { action, devis_id }
             });
         }
-        
+
         if (!['accept', 'postpone', 'refuse'].includes(action)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Bad Request',
-                message: \`Action invalide: "\${action}". Valeurs autorisées: accept, postpone, refuse\`
+                message: `Action invalide: "${action}". Valeurs autorisées: accept, postpone, refuse`
             });
         }
-        
-        console.log(\`[VERCEL API] 📤 Relais vers n8n: action=\${action}, devis_id=\${devis_id}\`);
-        
+
+        console.log(`[VERCEL API] 📤 Relais vers n8n: action=${action}, devis_id=${devis_id}`);
+
         // Configuration n8n
-        const N8N_WEBHOOK_URL = 'https://n8n-prod.traiteur-origin.com/webhook/gmail-actions-v3-3'\;
-        const targetUrl = \`\${N8N_WEBHOOK_URL}?action=\${action}&devis_id=\${devis_id}\`;
-        
+        const N8N_WEBHOOK_URL = 'https://n8n-prod.traiteur-origin.com/webhook/gmail-actions-v3-3';
+        const targetUrl = `${N8N_WEBHOOK_URL}?action=${action}&devis_id=${devis_id}`;
+
         // Timeout de 25 secondes (Vercel limite à 10s sur Free, 60s sur Pro)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 25000);
-        
+
         // Appel vers n8n
         const n8nResponse = await fetch(targetUrl, {
             method: 'GET',
@@ -62,24 +62,24 @@ export default async function handler(req, res) {
             },
             signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
-        console.log(\`[VERCEL API] 📥 Réponse n8n: status=\${n8nResponse.status}\`);
-        
+
+        console.log(`[VERCEL API] 📥 Réponse n8n: status=${n8nResponse.status}`);
+
         // Récupérer le contenu de la réponse
         const contentType = n8nResponse.headers.get('content-type');
         let responseData;
-        
+
         if (contentType && contentType.includes('application/json')) {
             responseData = await n8nResponse.json();
         } else {
             responseData = await n8nResponse.text();
         }
-        
+
         // Si n8n répond avec succès
         if (n8nResponse.ok) {
-            console.log(\`[VERCEL API] ✅ Succès\`);
+            console.log(`[VERCEL API] ✅ Succès`);
             return res.status(200).json({
                 success: true,
                 action: action,
@@ -91,19 +91,19 @@ export default async function handler(req, res) {
             });
         } else {
             // n8n a renvoyé une erreur
-            console.error(\`[VERCEL API] ❌ Erreur n8n: \${n8nResponse.status}\`);
+            console.error(`[VERCEL API] ❌ Erreur n8n: ${n8nResponse.status}`);
             return res.status(n8nResponse.status).json({
                 success: false,
                 error: 'n8n Error',
                 n8n_status: n8nResponse.status,
-                message: \`n8n a renvoyé une erreur \${n8nResponse.status}\`,
+                message: `n8n a renvoyé une erreur ${n8nResponse.status}`,
                 details: responseData
             });
         }
-        
+
     } catch (error) {
-        console.error(\`[VERCEL API] 💥 Exception:\`, error.message);
-        
+        console.error(`[VERCEL API] 💥 Exception:`, error.message);
+
         // Gérer les timeouts
         if (error.name === 'AbortError') {
             return res.status(504).json({
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
                 timestamp: new Date().toISOString()
             });
         }
-        
+
         // Autres erreurs
         return res.status(500).json({
             success: false,
